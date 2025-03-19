@@ -11,7 +11,7 @@ function App() {
       <Routes>
         <Route path="/signup" element={<AuthForm type="signup" />} />
         <Route path="/login" element={<AuthForm type="login" />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Dashboard />} />
      </Routes>
     </Router>
     </UserProvider>
