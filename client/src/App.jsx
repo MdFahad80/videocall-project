@@ -1,14 +1,21 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import AuthForm from './pages/Auth/Auth';
+import { UserProvider } from "./context/UserContextApi";
+
+import Dashboard from './pages/Dashboard/Dashboard';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-   <h1 className='text-2xl'>Hellowww</h1>
-  )
+    <UserProvider>
+    <Router>
+      <Routes>
+        <Route path="/signup" element={<AuthForm type="signup" />} />
+        <Route path="/login" element={<AuthForm type="login" />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+     </Routes>
+    </Router>
+    </UserProvider>
+  );
 }
 
-export default App
+export default App;
