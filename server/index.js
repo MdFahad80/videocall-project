@@ -19,7 +19,7 @@ const server = createServer(app);
 console.log("[INFO] Initializing server...");
 
 // Allowed origins for CORS
-const allowedOrigins = ["https://videocall-project.vercel.app/"];
+const allowedOrigins = ["https://videocall-project.vercel.app"];
 
 // Middleware
 app.use(
