@@ -44,7 +44,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoute);
 app.use("/api/user", userRoute);
 
-app.get("/", (req, res) => {
+app.get("/ok", (req, res) => {
   res.json({ message: "Server is running!" });
 });
 
