@@ -9,9 +9,9 @@ function App() {
     <UserProvider>
     <Router>
       <Routes>
+      <Route path="/" element={<Dashboard />} />
         <Route path="/signup" element={<AuthForm type="signup" />} />
         <Route path="/login" element={<AuthForm type="login" />} />
-        <Route path="/" element={<Dashboard />} />
      </Routes>
     </Router>
     </UserProvider>
