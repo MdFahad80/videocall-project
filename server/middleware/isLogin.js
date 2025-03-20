@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import User from '../schema/userSchema'
+import User from '../schema/userSchema.js'
 
 const isLogin = (req, res, next) => {
     try {

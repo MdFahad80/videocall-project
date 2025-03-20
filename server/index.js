@@ -16,27 +16,21 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const server = createServer(app);
 
-console.log("[INFO] Initializing server...");
-
 // Allowed origins for CORS
-const allowedOrigins = ["https://videocall-project.vercel.app","http://localhost:5173"];
-
+const allowedOrigins = ["https://videocall-project.vercel.app","http://localhost:5173","*"];
 // Middleware
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        console.log("[INFO] CORS allowed for:", origin);
-        callback(null, true);
-      } else {
-        console.warn("[WARNING] CORS blocked for:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-  })
-);
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+
+}));
 app.use(express.json());
 app.use(cookieParser());
 
