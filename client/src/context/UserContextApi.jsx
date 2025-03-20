@@ -5,15 +5,24 @@ const UserContext = createContext();
 
 // Provider component to wrap around your app
 export const UserProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true); // Loading state
+    // Initialize state with localStorage data to prevent flickering issues
+    const [user, setUser] = useState(() => {
+        const storedUser = localStorage.getItem("userData");
+        return storedUser ? JSON.parse(storedUser) : null;
+    });
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("userData"));
-        if (storedUser) {
-            setUser(storedUser);
-        }
-        setLoading(false); // Set loading to false after fetching user data
+        const fetchUser = async () => {
+            setLoading(true);
+            const storedUser = localStorage.getItem("userData");
+            console.log("Fetched user from localStorage:", storedUser);
+            if (storedUser) {
+                setUser(JSON.parse(storedUser));
+            }
+            setLoading(false);
+        };
+        fetchUser();
     }, []);
 
     // Function to update user data
