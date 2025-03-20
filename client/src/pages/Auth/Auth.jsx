@@ -36,7 +36,7 @@ const AuthForm = ({ type }) => {
 
             if (type === 'login') {
                 localStorage.setItem('userData', JSON.stringify(response.data));
-                navigate('/dashboard')
+                navigate('/')
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Something went wrong!');
