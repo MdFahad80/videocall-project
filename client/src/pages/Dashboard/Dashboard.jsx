@@ -31,8 +31,8 @@ const Dashboard = () => {
   const connectionRef = useRef(null);
   const hasJoined = useRef(false);
 
- // const [isMuted, setIsMuted] = useState(false);
- // const [isCameraOn, setIsCameraOn] = useState(true);
+  // const [isMuted, setIsMuted] = useState(false);
+  // const [isCameraOn, setIsCameraOn] = useState(true);
 
   const [reciveCall, setReciveCall] = useState(false);
   const [caller, setCaller] = useState(null);
@@ -107,6 +107,9 @@ const Dashboard = () => {
         myVideo.current.srcObject = currentStream;
       }
 
+      // ✅ Ensure audio is not muted
+      currentStream.getAudioTracks().forEach(track => (track.enabled = true));
+
       setIsSidebarOpen(false);
       setSelectedUser(modalUser._id);
 
@@ -125,6 +128,9 @@ const Dashboard = () => {
 
       peer.on("stream", (remoteStream) => {
         if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
+        // ✅ Ensure audio is played properly
+        reciverVideo.current.muted = false;
+        reciverVideo.current.volume = 1.0;
       });
 
       socket.once("callAccepted", (data) => {
@@ -147,7 +153,8 @@ const Dashboard = () => {
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
       }
-
+          // ✅ Ensure audio is enabled
+      currentStream.getAudioTracks().forEach(track => (track.enabled = true));
       setCallAccepted(true);
       setReciveCall(true);
       setIsSidebarOpen(false);
@@ -164,6 +171,9 @@ const Dashboard = () => {
 
       peer.on("stream", (remoteStream) => {
         if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
+        // ✅ Ensure audio is played properly
+        reciverVideo.current.muted = false;
+        reciverVideo.current.volume = 1.0;
       });
 
       if (callerSignal) peer.signal(callerSignal);
@@ -218,21 +228,21 @@ const Dashboard = () => {
     allusers();
   }, []);
 
-    // Toggle Mute/Unmute
-    /*const toggleMute = () => {
-      if (stream) {
-        stream.getAudioTracks().forEach(track => track.enabled = isMuted);
-        setIsMuted(!isMuted);
-      }
-    };
-  
-    // Toggle Camera On/Off
-    const toggleCamera = () => {
-      if (stream) {
-        stream.getVideoTracks().forEach(track => track.enabled = !isCameraOn);
-        setIsCameraOn(!isCameraOn);
-      }
-    };*/
+  // Toggle Mute/Unmute
+  /*const toggleMute = () => {
+    if (stream) {
+      stream.getAudioTracks().forEach(track => track.enabled = isMuted);
+      setIsMuted(!isMuted);
+    }
+  };
+ 
+  // Toggle Camera On/Off
+  const toggleCamera = () => {
+    if (stream) {
+      stream.getVideoTracks().forEach(track => track.enabled = !isCameraOn);
+      setIsCameraOn(!isCameraOn);
+    }
+  };*/
 
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -256,7 +266,7 @@ const Dashboard = () => {
       console.error("Logout failed", error);
     }
   };
-  
+
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -386,7 +396,7 @@ const Dashboard = () => {
               type="button"
               //onClick={toggleCamera}
               className="bg-gray-700 p-4 rounded-full text-white shadow-lg cursor-pointer"
-            > 
+            >
               <FaVideo size={24} />
             </button>
           </div>
