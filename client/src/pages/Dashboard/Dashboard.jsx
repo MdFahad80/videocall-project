@@ -31,8 +31,8 @@ const Dashboard = () => {
   const connectionRef = useRef(null);
   const hasJoined = useRef(false);
 
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(true);
+ // const [isMuted, setIsMuted] = useState(false);
+ // const [isCameraOn, setIsCameraOn] = useState(true);
 
   const [reciveCall, setReciveCall] = useState(false);
   const [caller, setCaller] = useState(null);
@@ -219,7 +219,7 @@ const Dashboard = () => {
   }, []);
 
     // Toggle Mute/Unmute
-    const toggleMute = () => {
+    /*const toggleMute = () => {
       if (stream) {
         stream.getAudioTracks().forEach(track => track.enabled = isMuted);
         setIsMuted(!isMuted);
@@ -232,7 +232,7 @@ const Dashboard = () => {
         stream.getVideoTracks().forEach(track => track.enabled = !isCameraOn);
         setIsCameraOn(!isCameraOn);
       }
-    };
+    };*/
 
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -377,14 +377,14 @@ const Dashboard = () => {
             </button>
             <button
               type="button"
-              onClick={toggleMute}
+              //onClick={toggleMute}
               className="bg-gray-700 p-4 rounded-full text-white shadow-lg cursor-pointer"
             >
               <FaMicrophone size={24} />
             </button>
             <button
               type="button"
-              onClick={toggleCamera}
+              //onClick={toggleCamera}
               className="bg-gray-700 p-4 rounded-full text-white shadow-lg cursor-pointer"
             > 
               <FaVideo size={24} />
