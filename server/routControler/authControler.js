@@ -32,7 +32,7 @@ export const SignUp = async (req, res) => {
             fullname: newUser.fullname,
             username: newUser.username,
             profilepic: newUser.profilepic,
-            email:newUser.email,
+            email: newUser.email,
         })
 
     } catch (error) {
@@ -49,18 +49,21 @@ export const SignUp = async (req, res) => {
 export const Login = async (req, res) => {
     try {
         const { email, password } = req.body
-        const user = await User.findOne({email})
+        const user = await User.findOne({ email })
         if (!user) return res.status(500).send({ success: false, message: "Email Dosen't Exist Register" })
         const comparePassword = bcrypt.compareSync(password, user.password || "")
         if (!comparePassword) return res.status(500).send({ success: false, message: "Email Or Password dosen't Matching" })
-        jwtToken(user._id, res)
+        const token = jwtToken(user._id, res);
+        console.log(token);
+
         res.status(200).send({
             _id: user._id,
             fullname: user.fullname,
             username: user.username,
             profilepic: user.profilepic,
-            email:user.email,
-            message: "Succesfully LogIn"
+            email: user.email,
+            message: "Succesfully LogIn",
+            token
         })
     } catch (error) {
         res.status(500).send({
@@ -73,14 +76,16 @@ export const Login = async (req, res) => {
 
 export const LogOut = async (req, res) => {
     try {
-        res.cookie("jwt","",{
-            maxAge:0
-        })
-        res.status(200).send({message:"User LogOut"})
+        res.clearCookie('jwt', {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+        });
+        res.status(200).send({ message: "User LogOut" })
     } catch (error) {
         res.status(500).send({
             success: false,
-            message:error
+            message: error
         })
         console.log(error);
     }
