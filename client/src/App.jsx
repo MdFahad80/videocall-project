@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import AuthForm from './pages/Auth/Auth';
 import { UserProvider } from "./context/UserContextApi";
 import Dashboard from './pages/Dashboard/Dashboard';
-import IsLogin from './pages/Auth/isLogin';
+import IsLogin from './pages/Auth/IsLogin';
 
 function App() {
   return (
