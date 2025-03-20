@@ -3,8 +3,9 @@ import jwt from "jsonwebtoken";
 
 // Get all users (excluding current logged-in user)
 export const getAllUsers = async (req, res) => {
+    console.log("cookies",req.cookies);
     const token = req.cookies?.jwt;
-    console.log(token);
+    console.log("token",token);
     
     if (!token) return res.status(401).json({ success: false, message: "Unauthorized." });
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
