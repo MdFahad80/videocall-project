@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { use, useEffect, useRef, useState } from 'react';
 import socketInstance from '../components/socketio/VideoCallSocket';
 import { FaBars, FaTimes, FaPhoneAlt, FaMicrophone, FaVideo } from "react-icons/fa";
 import Lottie from "lottie-react";
@@ -30,6 +30,9 @@ const Dashboard = () => {
   const reciverVideo = useRef(null);
   const connectionRef = useRef(null);
   const hasJoined = useRef(false);
+
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOn, setIsCameraOn] = useState(true);
 
   const [reciveCall, setReciveCall] = useState(false);
   const [caller, setCaller] = useState(null);
@@ -215,6 +218,22 @@ const Dashboard = () => {
     allusers();
   }, []);
 
+    // Toggle Mute/Unmute
+    const toggleMute = () => {
+      if (stream) {
+        stream.getAudioTracks().forEach(track => track.enabled = isMuted);
+        setIsMuted(!isMuted);
+      }
+    };
+  
+    // Toggle Camera On/Off
+    const toggleCamera = () => {
+      if (stream) {
+        stream.getVideoTracks().forEach(track => track.enabled = !isCameraOn);
+        setIsCameraOn(!isCameraOn);
+      }
+    };
+
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -306,13 +325,13 @@ const Dashboard = () => {
         </ul>
 
         {/* Logout */}
-        <div
+        {user && <div
           onClick={handleLogout}
           className="absolute bottom-2 left-4 right-4 flex items-center gap-2 bg-red-400 px-4 py-1 cursor-pointer rounded-lg"
         >
           <RiLogoutBoxLine />
           Logout
-        </div>
+        </div>}
       </aside>
 
       {/* Main Content */}
@@ -322,7 +341,6 @@ const Dashboard = () => {
           <video
             ref={reciverVideo}
             autoPlay
-            muted
             className="absolute top-0 left-0 w-full h-full object-contain rounded-lg"
           />
 
@@ -332,7 +350,6 @@ const Dashboard = () => {
               ref={myVideo}
               autoPlay
               playsInline
-              muted
               className="w-32 h-40 md:w-56 md:h-52 object-cover rounded-lg"
             />
           </div>
@@ -360,14 +377,16 @@ const Dashboard = () => {
             </button>
             <button
               type="button"
+              onClick={toggleMute}
               className="bg-gray-700 p-4 rounded-full text-white shadow-lg cursor-pointer"
             >
               <FaMicrophone size={24} />
             </button>
             <button
               type="button"
+              onClick={toggleCamera}
               className="bg-gray-700 p-4 rounded-full text-white shadow-lg cursor-pointer"
-            >
+            > 
               <FaVideo size={24} />
             </button>
           </div>

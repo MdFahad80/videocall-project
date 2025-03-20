@@ -33,7 +33,9 @@ const AuthForm = ({ type }) => {
             const endpoint = type === 'signup' ? '/auth/signup' : '/auth/login';
             const response = await apiClient.post(endpoint, formData);
             toast.success(response.data.message || 'Success!');
-
+            if(type === 'signup'){
+                navigate('/login')
+            }
             if (type === 'login') {
                 localStorage.setItem('userData', JSON.stringify(response.data));
                 // Save token in cookies

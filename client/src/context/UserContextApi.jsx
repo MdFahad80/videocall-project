@@ -6,13 +6,14 @@ const UserContext = createContext();
 // Provider component to wrap around your app
 export const UserProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true); // Loading state
 
-    // Load user data from localStorage on initial render
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem("userData"));
         if (storedUser) {
             setUser(storedUser);
         }
+        setLoading(false); // Set loading to false after fetching user data
     }, []);
 
     // Function to update user data
@@ -22,7 +23,7 @@ export const UserProvider = ({ children }) => {
     };
 
     return (
-        <UserContext.Provider value={{ user, updateUser }}>
+        <UserContext.Provider value={{ user, updateUser, loading }}>
             {children}
         </UserContext.Provider>
     );
