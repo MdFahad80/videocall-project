@@ -13,7 +13,6 @@ import Peer from 'simple-peer'
 const Dashboard = () => {
   const { user, updateUser } = useUser();
   const navigate = useNavigate();
-
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -197,8 +196,6 @@ const Dashboard = () => {
       });
 
       peer.on("stream", (remoteStream) => {
-        ringtone.pause();
-        ringtone.currentTime = 0;
         if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
         // ✅ Ensure audio is played properly
         reciverVideo.current.muted = false;
@@ -219,20 +216,16 @@ const Dashboard = () => {
       ringtone.pause();
       ringtone.currentTime = 0; // Ensure it's reset
     }
+
     setReciveCall(false);
     setCallAccepted(false);
     socket.emit("reject-call", { to: caller.from, name: user.username, profilepic: user.profilepic });
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    endCallCleanup();
   };
 
   const handelendCall = () => {
     socket.emit("call-ended", { to: caller?.from || selectedUser, name: user.username });
     endCallCleanup();
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
   };
 
   const endCallCleanup = () => {
@@ -251,7 +244,6 @@ const Dashboard = () => {
   // ✅ Ensure caller’s camera also stops if call is rejected
   socket.on("reject-call", () => {
     endCallCleanup();
-    window.location.reload();
   });
 
   const isOnlineUser = (userId) => userOnline.some((u) => u.userId === userId);
