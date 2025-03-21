@@ -13,22 +13,19 @@ export const UserProvider = ({ children }) => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-            setLoading(true);
-            const storedUser = localStorage.getItem("userData");
-            console.log("Fetched user from localStorage:", storedUser);
-            if (storedUser) {
-                setUser(JSON.parse(storedUser));
-            }
-            setLoading(false);
+        setLoading(true);
+        const storedUser = localStorage.getItem("userData");
+        console.log("Fetched user from localStorage:", storedUser);
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
+        setLoading(false);
     }, []);
 
-       // Sync localStorage whenever user state updates
-       useEffect(() => {
-        if (user) {
+    // Sync localStorage whenever user state updates
+    useEffect(() => {
+        if (user)
             localStorage.setItem("userData", JSON.stringify(user));
-        } else {
-            localStorage.removeItem("userData");
-        }
     }, [user]);
 
     // Function to update user data
