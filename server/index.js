@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3000;
 const server = createServer(app);
 
 // Allowed origins for CORS
-const allowedOrigins = ["https://videocall-project.vercel.app","http://localhost:5173","*"];
+const allowedOrigins = ["https://videocall-project.vercel.app","http://localhost:5173"];
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
@@ -126,6 +126,7 @@ io.on("connection", (socket) => {
   socket.on("reject-call", (data) => {
     io.to(data.to).emit("callRejected", {
       name: data.name,
+      profilepic:data.profilepic 
     });
   });
 

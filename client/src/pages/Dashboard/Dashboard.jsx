@@ -42,6 +42,9 @@ const Dashboard = () => {
   const [callerName, setCallerName] = useState("");
   const [callerSignal, setCallerSignal] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);
+  const [rejectCallerinfo, setRejectCallerinfo] = useState(null);
+  const [rejectCallPopUp, setRejectCallPopUp] = useState(false);
+
 
   const socket = socketInstance.getSocket();
 
@@ -63,7 +66,8 @@ const Dashboard = () => {
     });
 
     socket.on("callRejected", (data) => {
-      alert(`Call rejected by ${data.name}`);
+      setRejectCallerinfo(data)
+      setRejectCallPopUp(true)
     });
 
     socket.on("callEnded", (data) => {
@@ -212,7 +216,7 @@ const Dashboard = () => {
     setReciveCall(false);
     setCallAccepted(false);
 
-    socket.emit("reject-call", { to: caller.from, name: user.username });
+    socket.emit("reject-call", { to: caller.from, name: user.username, profilepic: user.profilepic });
 
     setTimeout(() => {
       window.location.reload();
@@ -519,7 +523,34 @@ const Dashboard = () => {
       )}
 
       {/* Incoming Call Modal */}
-      {reciveCall && !callAccepted && (
+      {rejectCallPopUp && modalUser (
+        <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <div className="flex flex-col items-center">
+              <p className="font-black text-xl mb-2">Call rejected From...</p>
+              <img
+                src={rejectCallerinfo?.profilepic || "/default-avatar.png"}
+                alt="Caller"
+                className="w-20 h-20 rounded-full border-4 border-green-500"
+              />
+              <h3 className="text-lg font-bold mt-3">{rejectCallerinfo?.name}</h3>
+              <div className="flex gap-4 mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    startCall(); // function that handles media and calling
+                  }}
+                  className="bg-green-500 text-white px-4 py-1 rounded-lg w-28 flex gap-2 justify-center items-center"
+                >
+                  Call Again <FaPhoneAlt />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+       {reciveCall && !callAccepted && (
         <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
             <div className="flex flex-col items-center">

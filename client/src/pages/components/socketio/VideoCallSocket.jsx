@@ -4,7 +4,7 @@ let socket;
 
 const getSocket = () => {
     if (!socket) {
-        socket = io("https://slrtechcalls.onrender.com")
+        socket = io(import.meta.env.VITE_API_SOCKET_URL)
     }
     return socket;
 }
