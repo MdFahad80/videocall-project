@@ -13,6 +13,9 @@ import Peer from 'simple-peer'
 const Dashboard = () => {
   const { user, updateUser } = useUser();
   const navigate = useNavigate();
+  const ringtone = new Audio("/ringtone.mp3"); // Use the correct path or a URL
+  ringtone.loop = true; // Loop the sound until action is taken
+
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -57,8 +60,6 @@ const Dashboard = () => {
       setCaller(data);
       setCallerName(data.name);
       setCallerSignal(data.signal);
-      const ringtone = new Audio("/ringtone.mp3"); // Use the correct path or a URL
-      ringtone.loop = true; // Loop the sound until action is taken
       ringtone.play(); // Start playing 
     });
 
@@ -71,7 +72,6 @@ const Dashboard = () => {
     });
 
     socket.on("callEnded", (data) => {
-      console.log("Call ended by", data.name);
       endCallCleanup();
     });
 
@@ -163,9 +163,9 @@ const Dashboard = () => {
   };
 
   const handelacceptCall = async () => {
-       // ✅ Stop and completely reset ringtone
-        ringtone.pause();
-        ringtone.currentTime = 0; // Ensure it's reset
+    // ✅ Stop and completely reset ringtone
+      ringtone.pause();
+      ringtone.currentTime = 0; // Ensure it's reset
     try {
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -182,9 +182,7 @@ const Dashboard = () => {
       setCallAccepted(true);
       setReciveCall(true);
       setIsSidebarOpen(false);
-
       const peer = new Peer({ initiator: false, trickle: false, stream: currentStream });
-
       peer.on("signal", (data) => {
         socket.emit("answeredCall", {
           signal: data,
@@ -192,16 +190,13 @@ const Dashboard = () => {
           to: caller.from,
         });
       });
-
       peer.on("stream", (remoteStream) => {
         if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
         // ✅ Ensure audio is played properly
         reciverVideo.current.muted = false;
         reciverVideo.current.volume = 1.0;
       });
-
       if (callerSignal) peer.signal(callerSignal);
-
       connectionRef.current = peer;
     } catch (error) {
       console.error("Error accessing media devices:", error);
@@ -209,10 +204,6 @@ const Dashboard = () => {
   };
 
   const handelrejectCall = () => {
-    // ✅ Stop and completely reset ringtone
-      ringtone.pause();
-      ringtone.currentTime = 0; // Ensure it's reset
-
     setReciveCall(false);
     setCallAccepted(false);
     socket.emit("reject-call", { to: caller.from, name: user.username, profilepic: user.profilepic });
@@ -231,16 +222,14 @@ const Dashboard = () => {
     if (reciverVideo.current) reciverVideo.current.srcObject = null;
     if (myVideo.current) myVideo.current.srcObject = null;
     connectionRef.current?.destroy();
+    ringtone.pause();
+    ringtone.currentTime = 0; // Ensure it's reset
     setStream(null);
     setReciveCall(false);
     setCallAccepted(false);
     setSelectedUser(null);
+    window.location.reload();
   };
-
-  // ✅ Ensure caller’s camera also stops if call is rejected
-  socket.on("reject-call", () => {
-    endCallCleanup();
-  });
 
   const isOnlineUser = (userId) => userOnline.some((u) => u.userId === userId);
 
