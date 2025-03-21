@@ -3,9 +3,8 @@ import jwt from "jsonwebtoken";
 
 // Get all users (excluding current logged-in user)
 export const getAllUsers = async (req, res) => {
-    //console.log(req.cookies.jwt);
     const currentUserID = req.user?._conditions?._id;
-    console.log("current user",currentUserID);
+   // console.log("current user",currentUserID);
     if (!currentUserID) return res.status(401).json({ success: false, message: "Unauthorized." });
     try {
         const users = await User.find({ _id: { $ne: currentUserID } }, "profilepic email username");
