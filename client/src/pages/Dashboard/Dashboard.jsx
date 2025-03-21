@@ -163,8 +163,12 @@ const Dashboard = () => {
   };
 
   const handelacceptCall = async () => {
-    ringtone.pause(); // Stop the ringtone
-    ringtone.currentTime = 0; // Reset audio
+
+    // ✅ Stop and completely reset ringtone
+    if (!ringtone.paused) {
+      ringtone.pause();
+      ringtone.currentTime = 0; // Ensure it's reset
+    }
 
     try {
       const currentStream = await navigator.mediaDevices.getUserMedia({
@@ -209,9 +213,11 @@ const Dashboard = () => {
   };
 
   const handelrejectCall = () => {
-
-    ringtone.pause();
-    ringtone.currentTime = 0;
+    // ✅ Stop and completely reset ringtone
+    if (!ringtone.paused) {
+      ringtone.pause();
+      ringtone.currentTime = 0; // Ensure it's reset
+    }
 
     setReciveCall(false);
     setCallAccepted(false);
@@ -224,10 +230,6 @@ const Dashboard = () => {
   };
 
   const handelendCall = () => {
-
-    ringtone.pause();
-    ringtone.currentTime = 0;
-
     socket.emit("call-ended", { to: caller?.from || selectedUser, name: user.username });
     endCallCleanup();
     setTimeout(() => {
@@ -304,10 +306,10 @@ const Dashboard = () => {
       await apiClient.post('/auth/logout');
       socket.off("disconnect");
       socket.disconnect();
-      socketInstance.setSocket();
-      updateUser(null);
+      socketInstance.setSocket(null);
       localStorage.removeItem("userData");
-      navigate('/login');
+      updateUser(null);
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error("Logout failed", error);
     }
@@ -523,7 +525,7 @@ const Dashboard = () => {
       )}
 
       {/* Incoming Call Modal */}
-      {rejectCallPopUp && modalUser (
+      {rejectCallPopUp && (
         <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
             <div className="flex flex-col items-center">
@@ -550,7 +552,7 @@ const Dashboard = () => {
         </div>
       )}
 
-       {reciveCall && !callAccepted && (
+      {reciveCall && !callAccepted && (
         <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
             <div className="flex flex-col items-center">
