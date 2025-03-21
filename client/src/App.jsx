@@ -7,12 +7,12 @@ function App() {
   return (
     <Router>
       <Routes>
-      <Route path="/" element={<IsLogin/>}>
-      <Route path="" element={<Dashboard />} />
-      </Route>
+        <Route element={<IsLogin />}>
+          <Route path="/" element={<Dashboard />} />
+        </Route>
         <Route path="/signup" element={<AuthForm type="signup" />} />
         <Route path="/login" element={<AuthForm type="login" />} />
-     </Routes>
+      </Routes>
     </Router>
   );
 }
