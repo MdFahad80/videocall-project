@@ -128,7 +128,7 @@ io.on("connection", (socket) => {
   socket.on("reject-call", (data) => {
     io.to(data.to).emit("callRejected", {
       name: data.name,
-      profilepic:data.profilepic 
+      profilepic: data.profilepic 
     });
   });
 

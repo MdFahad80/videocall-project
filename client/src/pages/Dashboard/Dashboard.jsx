@@ -2,6 +2,7 @@ import React, { use, useEffect, useRef, useState } from 'react';
 import socketInstance from '../components/socketio/VideoCallSocket';
 import { FaBars, FaTimes, FaPhoneAlt, FaMicrophone, FaVideo } from "react-icons/fa";
 import Lottie from "lottie-react";
+import { Howl } from "howler";
 import wavingAnimation from "../../assets/waving.json";
 import { FaPhoneSlash } from "react-icons/fa6";
 import apiClient from "../../apiClient";
@@ -34,9 +35,15 @@ const Dashboard = () => {
   const [callerSignal, setCallerSignal] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);
 
-  const ringtone = new Audio("/ringtone.mp3"); // Change path if needed
-  ringtone.loop = true; // ✅ Ensures the ringtone keeps playing until stopped
-  ringtone.volume = 1.0; // ✅ Set volume (1.0 = max)
+  const [callRejectedPopUp , setCallRejectedPopUp]=useState(false);
+  const [rejectorData , setCallrejectorData]=useState(null);
+
+  // 🔥 Load ringtone
+  const ringtone = new Howl({
+    src: ["/ringtone.mp3"], // ✅ Replace with your ringtone file
+    loop: false,  // ✅ Keep ringing until stopped
+    volume: 1.0, // ✅ Full volume
+  });
 
   const socket = socketInstance.getSocket();
 
@@ -56,23 +63,23 @@ const Dashboard = () => {
       setCaller(data);      // Store caller's information in state.
       setCallerName(data.name);  // Store caller's name.
       setCallerSignal(data.signal);  // Store WebRTC signal data for the call.
-      // ✅ Play the ringtone when receiving a call
-      ringtone.play().catch((err) => console.error("Ringtone play error:", err));
+      // ✅ Start playing ringtone
+      ringtone.play();
     });
     // Listen for "callRejected" event, which is triggered when the other user declines the call.
     socket.on("callRejected", (data) => {
-      alert(`Call rejected by ${data.name}`);  // Show an alert with the rejecter's name.
-      // ✅ Stop ringtone when call is rejected
-      ringtone.pause();
-      ringtone.currentTime = 0;
+      setCallRejectedPopUp(true);
+      setCallrejectorData(data);
+      // ✅ Stop ringtone in case call is ended before acceptance
+      // ✅ Stop ringtone when call is accepted
+      ringtone.stop();
     });
     // Listen for "callEnded" event, which is triggered when the other user ends the call.
     socket.on("callEnded", (data) => {
       console.log("Call ended by", data.name); // Log the event in the console.
+      // ✅ Stop ringtone in case call is ended before acceptance
+      ringtone.stop();
       endCallCleanup();  // Call a function to clean up the call state.
-      // ✅ Stop ringtone if the call is ended before acceptance
-      ringtone.pause();
-      ringtone.currentTime = 0;
     });
     // Listen for "userUnavailable" event, meaning the user being called is not online.
     socket.on("userUnavailable", (data) => {
@@ -97,6 +104,14 @@ const Dashboard = () => {
       socket.off("online-users");  // Remove listener for online users list.
     };
   }, [user, socket]); // Dependencies: This effect runs whenever `user` or `socket` changes.
+  // ✅ Utility function to stop ringtone completely
+ /* const stopRingtone = () => {
+    if (ringtone) {
+      ringtone.pause();
+      ringtone.currentTime = 0;
+      ringtone.src = "";  // ✅ This ensures it fully stops and resets
+    }
+  };*/
 
   const startCall = async () => {
     try {
@@ -119,6 +134,7 @@ const Dashboard = () => {
       // ✅ Ensure that the audio track is enabled
       currentStream.getAudioTracks().forEach(track => (track.enabled = true));
       // ✅ Close the sidebar (if open) and set the selected user for the call
+      setCallRejectedPopUp(false);
       setIsSidebarOpen(false);
       setSelectedUser(modalUser._id);
       // ✅ Create a new Peer connection (WebRTC) as the call initiator
@@ -149,6 +165,7 @@ const Dashboard = () => {
       });
       // ✅ Listen for "callAccepted" event from the server (when the recipient accepts the call)
       socket.once("callAccepted", (data) => {
+        setCallRejectedPopUp(false);
         setCallAccepted(true); // ✅ Mark call as accepted
         setCaller(data.from); // ✅ Store caller's ID
         peer.signal(data.signal); // ✅ Pass the received WebRTC signal to establish the connection
@@ -163,10 +180,9 @@ const Dashboard = () => {
   };
 
   const handelacceptCall = async () => {
+    // ✅ Stop ringtone when call is accepted
+    ringtone.stop();
     try {
-      // ✅ Stop ringtone when call is accepted
-      ringtone.pause();
-      ringtone.currentTime = 0;
       // ✅ Request access to the user's media devices (camera & microphone)
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true, // Enable video
@@ -230,8 +246,7 @@ const Dashboard = () => {
 
   const handelrejectCall = () => {
     // ✅ Stop ringtone when call is accepted
-    ringtone.pause();
-    ringtone.currentTime = 0;
+    ringtone.stop();
     // ✅ Update the state to indicate that the call is rejected
     setReciveCall(false); // ✅ The user is no longer receiving a call
     setCallAccepted(false); // ✅ Ensure the call is not accepted
@@ -240,14 +255,15 @@ const Dashboard = () => {
     socket.emit("reject-call", {
       to: caller.from, // ✅ The caller's ID (who initiated the call)
       name: user.username, // ✅ The name of the user rejecting the call
-      profilepic: user.placeholder // ✅ Placeholder profile picture of the user rejecting the call
+      profilepic: user.profilepic // ✅ Placeholder profile picture of the user rejecting the call
     });
   };
 
   const handelendCall = () => {
     // ✅ Stop ringtone when call is accepted
-    ringtone.pause();
-    ringtone.currentTime = 0;
+    console.log("🔴 Sending call-ended event...");
+    // ✅ Stop ringtone when call is accepted
+    ringtone.stop();
     // ✅ Notify the other user that the call has ended
     socket.emit("call-ended", {
       to: caller?.from || selectedUser, // ✅ Send call end signal to the caller or selected user
@@ -260,20 +276,32 @@ const Dashboard = () => {
 
   const endCallCleanup = () => {
     // ✅ Stop all media tracks (video & audio) to release device resources
+    console.log("🔴 Stopping all media streams and resetting call...");
     if (stream) {
       stream.getTracks().forEach((track) => track.stop()); // ✅ Stops camera and microphone
     }
     // ✅ Clear the receiver's video (Remote user)
-    if (reciverVideo.current) reciverVideo.current.srcObject = null;
+    if (reciverVideo.current) {
+      console.log("🔴 Clearing receiver video");
+      reciverVideo.current.srcObject = null;
+    }
     // ✅ Clear the user's own video
-    if (myVideo.current) myVideo.current.srcObject = null;
+    if (myVideo.current) {
+      console.log("🔴 Clearing my video");
+      myVideo.current.srcObject = null;
+    }
     // ✅ Destroy the peer-to-peer connection if it exists
     connectionRef.current?.destroy();
     // ✅ Reset all relevant states to indicate call has ended
+    // ✅ Stop ringtone when call is accepted
+    ringtone.stop();
     setStream(null); // ✅ Remove video/audio stream
     setReciveCall(false); // ✅ Indicate no ongoing call
     setCallAccepted(false); // ✅ Ensure call is not mistakenly marked as ongoing
     setSelectedUser(null); // ✅ Reset the selected user
+    setTimeout(() => {
+      window.location.reload(); // ✅ Force reset if cleanup fails
+    }, 100);
   };
 
   const allusers = async () => {
@@ -537,7 +565,44 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-
+  {/* Call rejection PopUp */}
+  {callRejectedPopUp && (
+        <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <div className="flex flex-col items-center">
+              <p className="font-black text-xl mb-2">Call Rejected From...</p>
+              <img
+                src={rejectorData.profilepic || "/default-avatar.png"}
+                alt="Caller"
+                className="w-20 h-20 rounded-full border-4 border-green-500"
+              />
+              <h3 className="text-lg font-bold mt-3">{rejectorData.name}</h3>
+              <div className="flex gap-4 mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    startCall(); // function that handles media and calling
+                  }}
+                  className="bg-green-500 text-white px-4 py-1 rounded-lg w-28 flex gap-2 justify-center items-center"
+                >
+                  Call Again <FaPhoneAlt />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    endCallCleanup();
+                    setCallRejectedPopUp(false);
+                    setShowUserDetailModal(false);
+                  }}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg w-28 flex gap-2 justify-center items-center"
+                >
+                  Back <FaPhoneSlash />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Incoming Call Modal */}
       {reciveCall && !callAccepted && (
         <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
