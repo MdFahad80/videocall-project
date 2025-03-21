@@ -13,7 +13,6 @@ import Peer from 'simple-peer'
 const Dashboard = () => {
   const { user, updateUser } = useUser();
   const navigate = useNavigate();
-
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -22,17 +21,12 @@ const Dashboard = () => {
   const [userOnline, setUserOnline] = useState([]);
   const [stream, setStream] = useState(null);
   const [me, setMe] = useState("");
-
   const [showUserDetailModal, setShowUserDetailModal] = useState(false);
   const [modalUser, setModalUser] = useState(null);
-
   const myVideo = useRef(null);
   const reciverVideo = useRef(null);
   const connectionRef = useRef(null);
   const hasJoined = useRef(false);
-
-  // const [isMuted, setIsMuted] = useState(false);
-  // const [isCameraOn, setIsCameraOn] = useState(true);
 
   const [reciveCall, setReciveCall] = useState(false);
   const [caller, setCaller] = useState(null);
@@ -40,184 +34,247 @@ const Dashboard = () => {
   const [callerSignal, setCallerSignal] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);
 
+  const ringtone = new Audio("/ringtone.mp3"); // Change path if needed
+  ringtone.loop = true; // ✅ Ensures the ringtone keeps playing until stopped
+  ringtone.volume = 1.0; // ✅ Set volume (1.0 = max)
+
   const socket = socketInstance.getSocket();
 
   useEffect(() => {
+    // Check if `user` and `socket` exist and if the user has not already joined the socket room.
     if (user && socket && !hasJoined.current) {
+      // Emit a "join" event to the server with the user's ID and username.
       socket.emit("join", { id: user._id, name: user.username });
+      // Mark `hasJoined.current` as `true` to ensure the user does not join multiple times.
       hasJoined.current = true;
     }
-
+    // Listen for the "me" event, which provides the current user's socket ID.
     socket.on("me", (id) => setMe(id));
-
+    // Listen for "callToUser" event, which means another user is calling the current user.
     socket.on("callToUser", (data) => {
-      setReciveCall(true);
-      setCaller(data);
-      setCallerName(data.name);
-      setCallerSignal(data.signal);
+      setReciveCall(true);  // Set state to indicate an incoming call.
+      setCaller(data);      // Store caller's information in state.
+      setCallerName(data.name);  // Store caller's name.
+      setCallerSignal(data.signal);  // Store WebRTC signal data for the call.
+      // ✅ Play the ringtone when receiving a call
+      ringtone.play().catch((err) => console.error("Ringtone play error:", err));
     });
-
+    // Listen for "callRejected" event, which is triggered when the other user declines the call.
     socket.on("callRejected", (data) => {
-      alert(`Call rejected by ${data.name}`);
+      alert(`Call rejected by ${data.name}`);  // Show an alert with the rejecter's name.
+      // ✅ Stop ringtone when call is rejected
+      ringtone.pause();
+      ringtone.currentTime = 0;
     });
-
+    // Listen for "callEnded" event, which is triggered when the other user ends the call.
     socket.on("callEnded", (data) => {
-      console.log("Call ended by", data.name);
-      endCallCleanup();
+      console.log("Call ended by", data.name); // Log the event in the console.
+      endCallCleanup();  // Call a function to clean up the call state.
+      // ✅ Stop ringtone if the call is ended before acceptance
+      ringtone.pause();
+      ringtone.currentTime = 0;
     });
-
+    // Listen for "userUnavailable" event, meaning the user being called is not online.
     socket.on("userUnavailable", (data) => {
-      alert(data.message || "User is not available.");
+      alert(data.message || "User is not available."); // Show an alert.
     });
-
+    // Listen for "userBusy" event, meaning the user is already on another call.
     socket.on("userBusy", (data) => {
-      alert(data.message || "User is currently in another call.");
+      alert(data.message || "User is currently in another call."); // Show an alert.
     });
-
+    // Listen for "online-users" event, which provides the list of currently online users.
     socket.on("online-users", (onlineUsers) => {
-      setUserOnline(onlineUsers);
+      setUserOnline(onlineUsers); // Update state with the list of online users.
     });
-
+    // Cleanup function: Runs when the component unmounts or dependencies change.
     return () => {
-      socket.off("me");
-      socket.off("callToUser");
-      socket.off("callRejected");
-      socket.off("callEnded");
-      socket.off("userUnavailable");
-      socket.off("userBusy");
-      socket.off("online-users");
+      socket.off("me");  // Remove listener for "me" event.
+      socket.off("callToUser");  // Remove listener for incoming calls.
+      socket.off("callRejected");  // Remove listener for call rejection.
+      socket.off("callEnded");  // Remove listener for call ending.
+      socket.off("userUnavailable");  // Remove listener for unavailable user.
+      socket.off("userBusy");  // Remove listener for busy user.
+      socket.off("online-users");  // Remove listener for online users list.
     };
-  }, [user, socket]);
-
-  const handelSelectedUser = (userId) => {
-    if (callAccepted || reciveCall) {
-      alert("You must end the current call before starting a new one.");
-      return;
-    }
-    const selected = filteredUsers.find(user => user._id === userId);
-    setModalUser(selected);
-    setShowUserDetailModal(true);
-  };
+  }, [user, socket]); // Dependencies: This effect runs whenever `user` or `socket` changes.
 
   const startCall = async () => {
     try {
+      // ✅ Request access to the user's media devices (camera & microphone)
       const currentStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: { echoCancellation: true, noiseSuppression: true }
+        video: true, // Enable video
+        audio: {
+          echoCancellation: true, // ✅ Reduce echo in audio
+          noiseSuppression: true  // ✅ Reduce background noise
+        }
       });
-
+      // ✅ Store the stream in state so it can be used later
       setStream(currentStream);
+      // ✅ Assign the stream to the local video element for preview
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
-        myVideo.current.muted = true; // ✅ Mute local audio
-        myVideo.current.volume = 0;   // ✅ Prevent echo
+        myVideo.current.muted = true; // ✅ Mute local audio to prevent feedback
+        myVideo.current.volume = 0;   // ✅ Set volume to zero to avoid echo
       }
-
-      // ✅ Ensure audio is not muted
+      // ✅ Ensure that the audio track is enabled
       currentStream.getAudioTracks().forEach(track => (track.enabled = true));
-
+      // ✅ Close the sidebar (if open) and set the selected user for the call
       setIsSidebarOpen(false);
       setSelectedUser(modalUser._id);
-
-      const peer = new Peer({ initiator: true, trickle: false, stream: currentStream });
-
+      // ✅ Create a new Peer connection (WebRTC) as the call initiator
+      const peer = new Peer({
+        initiator: true, // ✅ This user starts the call
+        trickle: false,  // ✅ Prevents trickling of ICE candidates, ensuring a single signal exchange
+        stream: currentStream // ✅ Attach the local media stream
+      });
+      // ✅ Handle the "signal" event (this occurs when the WebRTC handshake is initiated)
       peer.on("signal", (data) => {
+        // ✅ Emit a "callToUser" event to the server with necessary call details
         socket.emit("callToUser", {
-          callToUserId: modalUser._id,
-          signalData: data,
-          from: me,
-          name: user.username,
-          email: user.email,
-          profilepic: user.profilepic,
+          callToUserId: modalUser._id, // ✅ ID of the user being called
+          signalData: data, // ✅ WebRTC signal data required for establishing connection
+          from: me, // ✅ ID of the caller
+          name: user.username, // ✅ Caller’s name
+          email: user.email, // ✅ Caller’s email
+          profilepic: user.profilepic, // ✅ Caller’s profile picture
         });
       });
-
+      // ✅ Handle the "stream" event (this is triggered when the remote user's media stream is received)
       peer.on("stream", (remoteStream) => {
-        if (reciverVideo.current)
-          reciverVideo.current.srcObject = remoteStream;
-        // ✅ Ensure audio is played properly
-        reciverVideo.current.muted = false;
-        reciverVideo.current.volume = 1.0;
+        if (reciverVideo.current) {
+          reciverVideo.current.srcObject = remoteStream; // ✅ Assign remote stream to video element
+          reciverVideo.current.muted = false; // ✅ Ensure audio from the remote user is not muted
+          reciverVideo.current.volume = 1.0; // ✅ Set volume to normal level
+        }
       });
-
+      // ✅ Listen for "callAccepted" event from the server (when the recipient accepts the call)
       socket.once("callAccepted", (data) => {
-        setCallAccepted(true);
-        setCaller(data.from);
-        peer.signal(data.signal);
+        setCallAccepted(true); // ✅ Mark call as accepted
+        setCaller(data.from); // ✅ Store caller's ID
+        peer.signal(data.signal); // ✅ Pass the received WebRTC signal to establish the connection
       });
-
+      // ✅ Store the peer connection reference to manage later (like ending the call)
       connectionRef.current = peer;
+      // ✅ Close the user detail modal after initiating the call
       setShowUserDetailModal(false);
     } catch (error) {
-      console.error("Error accessing media devices:", error);
+      console.error("Error accessing media devices:", error); // ✅ Handle permission errors or device access failures
     }
   };
 
   const handelacceptCall = async () => {
     try {
-      const currentStream = await navigator.mediaDevices.getUserMedia({ video: true,
-        audio: { echoCancellation: true, noiseSuppression: true }
-        });
+      // ✅ Stop ringtone when call is accepted
+      ringtone.pause();
+      ringtone.currentTime = 0;
+      // ✅ Request access to the user's media devices (camera & microphone)
+      const currentStream = await navigator.mediaDevices.getUserMedia({
+        video: true, // Enable video
+        audio: {
+          echoCancellation: true, // ✅ Reduce echo in audio
+          noiseSuppression: true  // ✅ Reduce background noise
+        }
+      });
+
+      // ✅ Store the stream in state so it can be used later
       setStream(currentStream);
+
+      // ✅ Assign the stream to the local video element for preview
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
       }
-      // ✅ Ensure audio is enabled
+
+      // ✅ Ensure that the audio track is enabled
       currentStream.getAudioTracks().forEach(track => (track.enabled = true));
-      setCallAccepted(true);
-      setReciveCall(true);
-      setIsSidebarOpen(false);
 
-      const peer = new Peer({ initiator: false, trickle: false, stream: currentStream });
+      // ✅ Update call state
+      setCallAccepted(true); // ✅ Mark call as accepted
+      setReciveCall(true); // ✅ Indicate that the user has received the call
+      setIsSidebarOpen(false); // ✅ Close the sidebar (if open)
 
+      // ✅ Create a new Peer connection as the receiver (not the initiator)
+      const peer = new Peer({
+        initiator: false, // ✅ This user is NOT the call initiator
+        trickle: false, // ✅ Prevents trickling of ICE candidates, ensuring a single signal exchange
+        stream: currentStream // ✅ Attach the local media stream
+      });
+
+      // ✅ Handle the "signal" event (this occurs when the WebRTC handshake is completed)
       peer.on("signal", (data) => {
+        // ✅ Emit an "answeredCall" event to the server with necessary response details
         socket.emit("answeredCall", {
-          signal: data,
-          from: me,
-          to: caller.from,
+          signal: data, // ✅ WebRTC signal data required for establishing connection
+          from: me, // ✅ ID of the receiver (this user)
+          to: caller.from, // ✅ ID of the caller
         });
       });
 
+      // ✅ Handle the "stream" event (this is triggered when the remote user's media stream is received)
       peer.on("stream", (remoteStream) => {
-        if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
-        // ✅ Ensure audio is played properly
-        reciverVideo.current.muted = false;
-        reciverVideo.current.volume = 1.0;
+        if (reciverVideo.current) {
+          reciverVideo.current.srcObject = remoteStream; // ✅ Assign remote stream to video element
+          reciverVideo.current.muted = false; // ✅ Ensure audio from the remote user is not muted
+          reciverVideo.current.volume = 1.0; // ✅ Set volume to normal level
+        }
       });
 
+      // ✅ If there's an incoming signal (from the caller), process it
       if (callerSignal) peer.signal(callerSignal);
 
+      // ✅ Store the peer connection reference to manage later (like ending the call)
       connectionRef.current = peer;
     } catch (error) {
-      console.error("Error accessing media devices:", error);
+      console.error("Error accessing media devices:", error); // ✅ Handle permission errors or device access failures
     }
   };
 
   const handelrejectCall = () => {
-    setReciveCall(false);
-    setCallAccepted(false);
-    socket.emit("reject-call", { to: caller.from, name: user.username,profilepic: user.placeholder });
+    // ✅ Stop ringtone when call is accepted
+    ringtone.pause();
+    ringtone.currentTime = 0;
+    // ✅ Update the state to indicate that the call is rejected
+    setReciveCall(false); // ✅ The user is no longer receiving a call
+    setCallAccepted(false); // ✅ Ensure the call is not accepted
+
+    // ✅ Notify the caller that the call was rejected
+    socket.emit("reject-call", {
+      to: caller.from, // ✅ The caller's ID (who initiated the call)
+      name: user.username, // ✅ The name of the user rejecting the call
+      profilepic: user.placeholder // ✅ Placeholder profile picture of the user rejecting the call
+    });
   };
 
   const handelendCall = () => {
-    socket.emit("call-ended", { to: caller?.from || selectedUser, name: user.username });
+    // ✅ Stop ringtone when call is accepted
+    ringtone.pause();
+    ringtone.currentTime = 0;
+    // ✅ Notify the other user that the call has ended
+    socket.emit("call-ended", {
+      to: caller?.from || selectedUser, // ✅ Send call end signal to the caller or selected user
+      name: user.username // ✅ Send the username to inform the other party
+    });
+
+    // ✅ Perform cleanup actions after ending the call
     endCallCleanup();
   };
 
   const endCallCleanup = () => {
+    // ✅ Stop all media tracks (video & audio) to release device resources
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => track.stop()); // ✅ Stops camera and microphone
     }
+    // ✅ Clear the receiver's video (Remote user)
     if (reciverVideo.current) reciverVideo.current.srcObject = null;
+    // ✅ Clear the user's own video
     if (myVideo.current) myVideo.current.srcObject = null;
+    // ✅ Destroy the peer-to-peer connection if it exists
     connectionRef.current?.destroy();
-    setStream(null);
-    setReciveCall(false);
-    setCallAccepted(false);
-    setSelectedUser(null);
+    // ✅ Reset all relevant states to indicate call has ended
+    setStream(null); // ✅ Remove video/audio stream
+    setReciveCall(false); // ✅ Indicate no ongoing call
+    setCallAccepted(false); // ✅ Ensure call is not mistakenly marked as ongoing
+    setSelectedUser(null); // ✅ Reset the selected user
   };
-
-  const isOnlineUser = (userId) => userOnline.some((u) => u.userId === userId);
 
   const allusers = async () => {
     try {
@@ -237,21 +294,17 @@ const Dashboard = () => {
     allusers();
   }, []);
 
-  // Toggle Mute/Unmute
-  /*const toggleMute = () => {
-    if (stream) {
-      stream.getAudioTracks().forEach(track => track.enabled = isMuted);
-      setIsMuted(!isMuted);
+  const isOnlineUser = (userId) => userOnline.some((u) => u.userId === userId);
+
+  const handelSelectedUser = (userId) => {
+    if (callAccepted || reciveCall) {
+      alert("You must end the current call before starting a new one.");
+      return;
     }
+    const selected = filteredUsers.find(user => user._id === userId);
+    setModalUser(selected);
+    setShowUserDetailModal(true);
   };
- 
-  // Toggle Camera On/Off
-  const toggleCamera = () => {
-    if (stream) {
-      stream.getVideoTracks().forEach(track => track.enabled = !isCameraOn);
-      setIsCameraOn(!isCameraOn);
-    }
-  };*/
 
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||

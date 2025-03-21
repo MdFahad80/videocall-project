@@ -17,7 +17,9 @@ const PORT = process.env.PORT || 3000;
 const server = createServer(app);
 
 // Allowed origins for CORS
-const allowedOrigins = ["https://videocall-project.vercel.app","http://localhost:5173"];
+const allowedOrigins = [process.env.FRONTEND_URL];
+console.log(allowedOrigins);
+
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
