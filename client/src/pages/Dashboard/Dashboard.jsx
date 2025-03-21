@@ -13,6 +13,9 @@ import Peer from 'simple-peer'
 const Dashboard = () => {
   const { user, updateUser } = useUser();
   const navigate = useNavigate();
+  const ringtone = new Audio("/ringtone.mp3"); // Use the correct path or a URL
+  ringtone.loop = true; // Loop the sound until action is taken
+
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -55,6 +58,8 @@ const Dashboard = () => {
       setCaller(data);
       setCallerName(data.name);
       setCallerSignal(data.signal);
+
+      ringtone.play(); // Start playing ringtone
     });
 
     socket.on("callRejected", (data) => {
@@ -154,7 +159,10 @@ const Dashboard = () => {
   };
 
   const handelacceptCall = async () => {
+
     try {
+      ringtone.pause(); // Stop the ringtone
+      ringtone.currentTime = 0; // Reset audio
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: { echoCancellation: true, noiseSuppression: true }
@@ -197,14 +205,24 @@ const Dashboard = () => {
   };
 
   const handelrejectCall = () => {
+    ringtone.pause();
+    ringtone.currentTime = 0;
     setReciveCall(false);
     setCallAccepted(false);
     socket.emit("reject-call", { to: caller.from, name: user.username });
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const handelendCall = () => {
+    ringtone.pause();
+    ringtone.currentTime = 0;
     socket.emit("call-ended", { to: caller?.from || selectedUser, name: user.username });
     endCallCleanup();
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const endCallCleanup = () => {
@@ -220,6 +238,12 @@ const Dashboard = () => {
     setSelectedUser(null);
   };
 
+  // ✅ Ensure caller’s camera also stops if call is rejected
+  socket.on("reject-call", () => {
+    endCallCleanup();
+    window.location.reload();
+  });
+  
   const isOnlineUser = (userId) => userOnline.some((u) => u.userId === userId);
 
   const allusers = async () => {
