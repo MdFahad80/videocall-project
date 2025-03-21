@@ -13,9 +13,6 @@ import Peer from 'simple-peer'
 const Dashboard = () => {
   const { user, updateUser } = useUser();
   const navigate = useNavigate();
-  const ringtone = new Audio("/ringtone.mp3"); // Use the correct path or a URL
-  ringtone.loop = true; // Loop the sound until action is taken
-
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -61,6 +58,8 @@ const Dashboard = () => {
       setCaller(data);
       setCallerName(data.name);
       setCallerSignal(data.signal);
+      const ringtone = new Audio("/ringtone.mp3"); // Use the correct path or a URL
+      ringtone.loop = true; // Loop the sound until action is taken
       ringtone.play(); // Start playing ringtone
     });
 
@@ -69,7 +68,7 @@ const Dashboard = () => {
       setRejectCallPopUp(true)
       setTimeout(() => {
         window.location.reload();
-      }, 1000);
+      }, 3000);
     });
 
     socket.on("callEnded", (data) => {
@@ -185,7 +184,6 @@ const Dashboard = () => {
       currentStream.getAudioTracks().forEach(track => (track.enabled = true));
       setCallAccepted(true);
       setReciveCall(true);
-      setRejectCallPopUp(false);
       setIsSidebarOpen(false);
 
       const peer = new Peer({ initiator: false, trickle: false, stream: currentStream });
