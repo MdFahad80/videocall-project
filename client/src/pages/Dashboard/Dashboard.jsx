@@ -13,8 +13,6 @@ import Peer from 'simple-peer'
 const Dashboard = () => {
   const { user, updateUser } = useUser();
   const navigate = useNavigate();
-  const ringtone = new Audio("/ringtone.mp3"); // Use the correct path or a URL
-  ringtone.loop = true; // Loop the sound until action is taken
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -41,56 +39,46 @@ const Dashboard = () => {
   const [callerName, setCallerName] = useState("");
   const [callerSignal, setCallerSignal] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);
-  const [rejectCallerinfo, setRejectCallerinfo] = useState(null);
-  const [rejectCallPopUp, setRejectCallPopUp] = useState(false);
-
 
   const socket = socketInstance.getSocket();
 
   useEffect(() => {
     if (user && socket && !hasJoined.current) {
-      // Emit a join event when the user connects to the socket
       socket.emit("join", { id: user._id, name: user.username });
       hasJoined.current = true;
     }
-  
-    // Listen for socket events
+
     socket.on("me", (id) => setMe(id));
-  
+
     socket.on("callToUser", (data) => {
       setReciveCall(true);
       setCaller(data);
       setCallerName(data.name);
       setCallerSignal(data.signal);
-      ringtone.play(); // Start playing ringtone when a call is received
     });
-  
+
     socket.on("callRejected", (data) => {
-      setRejectCallerinfo(data);
-      setRejectCallPopUp(true);
-      setTimeout(() => {
-        window.location.reload(); // Reload the page after rejection
-      }, 3000);
+      alert(`Call rejected by ${data.name}`);
     });
-  
-    socket.on("callEnded", () => {
-      endCallCleanup(); // Cleanup when call ends
+
+    socket.on("callEnded", (data) => {
+      console.log("Call ended by", data.name);
+      endCallCleanup();
     });
-  
+
     socket.on("userUnavailable", (data) => {
-      alert(data.message || "User is not available."); // Show alert if user is unavailable
+      alert(data.message || "User is not available.");
     });
-  
+
     socket.on("userBusy", (data) => {
-      alert(data.message || "User is currently in another call."); // Show alert if user is busy
+      alert(data.message || "User is currently in another call.");
     });
-  
+
     socket.on("online-users", (onlineUsers) => {
-      setUserOnline(onlineUsers); // Update online users list
+      setUserOnline(onlineUsers);
     });
-  
+
     return () => {
-      // Cleanup socket event listeners when component unmounts
       socket.off("me");
       socket.off("callToUser");
       socket.off("callRejected");
@@ -100,7 +88,7 @@ const Dashboard = () => {
       socket.off("online-users");
     };
   }, [user, socket]);
-  
+
   const handelSelectedUser = (userId) => {
     if (callAccepted || reciveCall) {
       alert("You must end the current call before starting a new one.");
@@ -110,26 +98,29 @@ const Dashboard = () => {
     setModalUser(selected);
     setShowUserDetailModal(true);
   };
-  
+
   const startCall = async () => {
     try {
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: { echoCancellation: true, noiseSuppression: true }
       });
-  
+
       setStream(currentStream);
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
-        myVideo.current.muted = true; // Mute local audio to avoid echo
-        myVideo.current.volume = 0;
+        myVideo.current.muted = true; // ✅ Mute local audio
+        myVideo.current.volume = 0;   // ✅ Prevent echo
       }
-  
+
+      // ✅ Ensure audio is not muted
+      currentStream.getAudioTracks().forEach(track => (track.enabled = true));
+
       setIsSidebarOpen(false);
       setSelectedUser(modalUser._id);
-  
+
       const peer = new Peer({ initiator: true, trickle: false, stream: currentStream });
-  
+
       peer.on("signal", (data) => {
         socket.emit("callToUser", {
           callToUserId: modalUser._id,
@@ -140,50 +131,45 @@ const Dashboard = () => {
           profilepic: user.profilepic,
         });
       });
-  
+
       peer.on("stream", (remoteStream) => {
-        if (reciverVideo.current) {
+        if (reciverVideo.current)
           reciverVideo.current.srcObject = remoteStream;
-          reciverVideo.current.muted = false;
-          reciverVideo.current.volume = 1.0;
-        }
+        // ✅ Ensure audio is played properly
+        reciverVideo.current.muted = false;
+        reciverVideo.current.volume = 1.0;
       });
-  
+
       socket.once("callAccepted", (data) => {
         setCallAccepted(true);
         setCaller(data.from);
         peer.signal(data.signal);
       });
-  
+
       connectionRef.current = peer;
       setShowUserDetailModal(false);
     } catch (error) {
       console.error("Error accessing media devices:", error);
     }
   };
-  
+
   const handelacceptCall = async () => {
-    // Stop the ringtone when the call is accepted
-    ringtone.pause();
-    ringtone.currentTime = 0;
-  
     try {
-      const currentStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+      const currentStream = await navigator.mediaDevices.getUserMedia({ video: true,
         audio: { echoCancellation: true, noiseSuppression: true }
-      });
+        });
       setStream(currentStream);
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
-        myVideo.current.muted = true;
-        myVideo.current.volume = 0;
       }
-  
+      // ✅ Ensure audio is enabled
+      currentStream.getAudioTracks().forEach(track => (track.enabled = true));
       setCallAccepted(true);
       setReciveCall(true);
       setIsSidebarOpen(false);
+
       const peer = new Peer({ initiator: false, trickle: false, stream: currentStream });
-  
+
       peer.on("signal", (data) => {
         socket.emit("answeredCall", {
           signal: data,
@@ -191,54 +177,47 @@ const Dashboard = () => {
           to: caller.from,
         });
       });
-  
+
       peer.on("stream", (remoteStream) => {
-        if (reciverVideo.current) {
-          reciverVideo.current.srcObject = remoteStream;
-          reciverVideo.current.muted = false;
-          reciverVideo.current.volume = 1.0;
-        }
+        if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
+        // ✅ Ensure audio is played properly
+        reciverVideo.current.muted = false;
+        reciverVideo.current.volume = 1.0;
       });
-  
+
       if (callerSignal) peer.signal(callerSignal);
-  
+
       connectionRef.current = peer;
     } catch (error) {
       console.error("Error accessing media devices:", error);
     }
   };
-  
+
   const handelrejectCall = () => {
     setReciveCall(false);
     setCallAccepted(false);
-    socket.emit("reject-call", { to: caller.from, name: user.username, profilepic: user.profilepic });
-    endCallCleanup();
+    socket.emit("reject-call", { to: caller.from, name: user.username,profilepic: user.placeholder });
   };
-  
+
   const handelendCall = () => {
     socket.emit("call-ended", { to: caller?.from || selectedUser, name: user.username });
     endCallCleanup();
   };
-  
+
   const endCallCleanup = () => {
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop()); // Stop all media tracks
+      stream.getTracks().forEach((track) => track.stop());
     }
     if (reciverVideo.current) reciverVideo.current.srcObject = null;
     if (myVideo.current) myVideo.current.srcObject = null;
-    connectionRef.current?.destroy(); // Destroy the peer connection
-    ringtone.pause();
-    ringtone.currentTime = 0; // Reset ringtone
+    connectionRef.current?.destroy();
     setStream(null);
     setReciveCall(false);
     setCallAccepted(false);
     setSelectedUser(null);
-    window.location.reload(); // Refresh the page after call ends
   };
-  
-  // Check if a user is online by comparing their ID to the list of online users
+
   const isOnlineUser = (userId) => userOnline.some((u) => u.userId === userId);
-  
 
   const allusers = async () => {
     try {
@@ -258,6 +237,22 @@ const Dashboard = () => {
     allusers();
   }, []);
 
+  // Toggle Mute/Unmute
+  /*const toggleMute = () => {
+    if (stream) {
+      stream.getAudioTracks().forEach(track => track.enabled = isMuted);
+      setIsMuted(!isMuted);
+    }
+  };
+ 
+  // Toggle Camera On/Off
+  const toggleCamera = () => {
+    if (stream) {
+      stream.getVideoTracks().forEach(track => track.enabled = !isCameraOn);
+      setIsCameraOn(!isCameraOn);
+    }
+  };*/
+
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -272,10 +267,10 @@ const Dashboard = () => {
       await apiClient.post('/auth/logout');
       socket.off("disconnect");
       socket.disconnect();
-      socketInstance.setSocket(null);
-      localStorage.removeItem("userData");
+      socketInstance.setSocket();
       updateUser(null);
-      navigate('/login', { replace: true });
+      localStorage.removeItem("userData");
+      navigate('/login');
     } catch (error) {
       console.error("Logout failed", error);
     }
@@ -491,33 +486,6 @@ const Dashboard = () => {
       )}
 
       {/* Incoming Call Modal */}
-      {rejectCallPopUp && (
-        <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <div className="flex flex-col items-center">
-              <p className="font-black text-xl mb-2">Call rejected From...</p>
-              <img
-                src={rejectCallerinfo?.profilepic || "/default-avatar.png"}
-                alt="Caller"
-                className="w-20 h-20 rounded-full border-4 border-green-500"
-              />
-              <h3 className="text-lg font-bold mt-3">{rejectCallerinfo?.name}</h3>
-              <div className="flex gap-4 mt-5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    startCall(); // function that handles media and calling
-                  }}
-                  className="bg-green-500 text-white px-4 py-1 rounded-lg w-28 flex gap-2 justify-center items-center"
-                >
-                  Call Again <FaPhoneAlt />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {reciveCall && !callAccepted && (
         <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
