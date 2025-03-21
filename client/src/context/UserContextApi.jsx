@@ -22,12 +22,6 @@ export const UserProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    // Sync localStorage whenever user state updates
-    useEffect(() => {
-        if (user)
-            localStorage.setItem("userData", JSON.stringify(user));
-    }, [user]);
-
     // Function to update user data
     const updateUser = (newUserData) => {
         setUser(newUserData);
