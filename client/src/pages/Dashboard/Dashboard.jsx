@@ -49,45 +49,48 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user && socket && !hasJoined.current) {
+      // Emit a join event when the user connects to the socket
       socket.emit("join", { id: user._id, name: user.username });
       hasJoined.current = true;
     }
-
+  
+    // Listen for socket events
     socket.on("me", (id) => setMe(id));
-
+  
     socket.on("callToUser", (data) => {
       setReciveCall(true);
       setCaller(data);
       setCallerName(data.name);
       setCallerSignal(data.signal);
-      ringtone.play(); // Start playing 
+      ringtone.play(); // Start playing ringtone when a call is received
     });
-
+  
     socket.on("callRejected", (data) => {
-      setRejectCallerinfo(data)
-      setRejectCallPopUp(true)
+      setRejectCallerinfo(data);
+      setRejectCallPopUp(true);
       setTimeout(() => {
-        window.location.reload();
+        window.location.reload(); // Reload the page after rejection
       }, 3000);
     });
-
-    socket.on("callEnded", (data) => {
-      endCallCleanup();
+  
+    socket.on("callEnded", () => {
+      endCallCleanup(); // Cleanup when call ends
     });
-
+  
     socket.on("userUnavailable", (data) => {
-      alert(data.message || "User is not available.");
+      alert(data.message || "User is not available."); // Show alert if user is unavailable
     });
-
+  
     socket.on("userBusy", (data) => {
-      alert(data.message || "User is currently in another call.");
+      alert(data.message || "User is currently in another call."); // Show alert if user is busy
     });
-
+  
     socket.on("online-users", (onlineUsers) => {
-      setUserOnline(onlineUsers);
+      setUserOnline(onlineUsers); // Update online users list
     });
-
+  
     return () => {
+      // Cleanup socket event listeners when component unmounts
       socket.off("me");
       socket.off("callToUser");
       socket.off("callRejected");
@@ -97,7 +100,7 @@ const Dashboard = () => {
       socket.off("online-users");
     };
   }, [user, socket]);
-
+  
   const handelSelectedUser = (userId) => {
     if (callAccepted || reciveCall) {
       alert("You must end the current call before starting a new one.");
@@ -107,29 +110,26 @@ const Dashboard = () => {
     setModalUser(selected);
     setShowUserDetailModal(true);
   };
-
+  
   const startCall = async () => {
     try {
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: { echoCancellation: true, noiseSuppression: true }
       });
-
+  
       setStream(currentStream);
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
-        myVideo.current.muted = true; // ✅ Mute local audio
-        myVideo.current.volume = 0;   // ✅ Prevent echo
+        myVideo.current.muted = true; // Mute local audio to avoid echo
+        myVideo.current.volume = 0;
       }
-
-      // ✅ Ensure audio is not muted
-      currentStream.getAudioTracks().forEach(track => (track.enabled = true));
-
+  
       setIsSidebarOpen(false);
       setSelectedUser(modalUser._id);
-
+  
       const peer = new Peer({ initiator: true, trickle: false, stream: currentStream });
-
+  
       peer.on("signal", (data) => {
         socket.emit("callToUser", {
           callToUserId: modalUser._id,
@@ -140,32 +140,33 @@ const Dashboard = () => {
           profilepic: user.profilepic,
         });
       });
-
+  
       peer.on("stream", (remoteStream) => {
-        if (reciverVideo.current)
+        if (reciverVideo.current) {
           reciverVideo.current.srcObject = remoteStream;
-        // ✅ Ensure audio is played properly
-        reciverVideo.current.muted = false;
-        reciverVideo.current.volume = 1.0;
+          reciverVideo.current.muted = false;
+          reciverVideo.current.volume = 1.0;
+        }
       });
-
+  
       socket.once("callAccepted", (data) => {
         setCallAccepted(true);
         setCaller(data.from);
         peer.signal(data.signal);
       });
-
+  
       connectionRef.current = peer;
       setShowUserDetailModal(false);
     } catch (error) {
       console.error("Error accessing media devices:", error);
     }
   };
-
+  
   const handelacceptCall = async () => {
-    // ✅ Stop and completely reset ringtone
-      ringtone.pause();
-      ringtone.currentTime = 0; // Ensure it's reset
+    // Stop the ringtone when the call is accepted
+    ringtone.pause();
+    ringtone.currentTime = 0;
+  
     try {
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -174,15 +175,15 @@ const Dashboard = () => {
       setStream(currentStream);
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
-        myVideo.current.muted = true; // ✅ Mute local audio
-        myVideo.current.volume = 0;   // ✅ Prevent echo
+        myVideo.current.muted = true;
+        myVideo.current.volume = 0;
       }
-      // ✅ Ensure audio is enabled
-      currentStream.getAudioTracks().forEach(track => (track.enabled = true));
+  
       setCallAccepted(true);
       setReciveCall(true);
       setIsSidebarOpen(false);
       const peer = new Peer({ initiator: false, trickle: false, stream: currentStream });
+  
       peer.on("signal", (data) => {
         socket.emit("answeredCall", {
           signal: data,
@@ -190,48 +191,54 @@ const Dashboard = () => {
           to: caller.from,
         });
       });
+  
       peer.on("stream", (remoteStream) => {
-        if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
-        // ✅ Ensure audio is played properly
-        reciverVideo.current.muted = false;
-        reciverVideo.current.volume = 1.0;
+        if (reciverVideo.current) {
+          reciverVideo.current.srcObject = remoteStream;
+          reciverVideo.current.muted = false;
+          reciverVideo.current.volume = 1.0;
+        }
       });
+  
       if (callerSignal) peer.signal(callerSignal);
+  
       connectionRef.current = peer;
     } catch (error) {
       console.error("Error accessing media devices:", error);
     }
   };
-
+  
   const handelrejectCall = () => {
     setReciveCall(false);
     setCallAccepted(false);
     socket.emit("reject-call", { to: caller.from, name: user.username, profilepic: user.profilepic });
     endCallCleanup();
   };
-
+  
   const handelendCall = () => {
     socket.emit("call-ended", { to: caller?.from || selectedUser, name: user.username });
     endCallCleanup();
   };
-
+  
   const endCallCleanup = () => {
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => track.stop()); // Stop all media tracks
     }
     if (reciverVideo.current) reciverVideo.current.srcObject = null;
     if (myVideo.current) myVideo.current.srcObject = null;
-    connectionRef.current?.destroy();
+    connectionRef.current?.destroy(); // Destroy the peer connection
     ringtone.pause();
-    ringtone.currentTime = 0; // Ensure it's reset
+    ringtone.currentTime = 0; // Reset ringtone
     setStream(null);
     setReciveCall(false);
     setCallAccepted(false);
     setSelectedUser(null);
-    window.location.reload();
+    window.location.reload(); // Refresh the page after call ends
   };
-
+  
+  // Check if a user is online by comparing their ID to the list of online users
   const isOnlineUser = (userId) => userOnline.some((u) => u.userId === userId);
+  
 
   const allusers = async () => {
     try {
@@ -250,22 +257,6 @@ const Dashboard = () => {
   useEffect(() => {
     allusers();
   }, []);
-
-  // Toggle Mute/Unmute
-  /*const toggleMute = () => {
-    if (stream) {
-      stream.getAudioTracks().forEach(track => track.enabled = isMuted);
-      setIsMuted(!isMuted);
-    }
-  };
- 
-  // Toggle Camera On/Off
-  const toggleCamera = () => {
-    if (stream) {
-      stream.getVideoTracks().forEach(track => track.enabled = !isCameraOn);
-      setIsCameraOn(!isCameraOn);
-    }
-  };*/
 
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
