@@ -61,13 +61,15 @@ const Dashboard = () => {
       setCaller(data);
       setCallerName(data.name);
       setCallerSignal(data.signal);
-
       ringtone.play(); // Start playing ringtone
     });
 
     socket.on("callRejected", (data) => {
       setRejectCallerinfo(data)
       setRejectCallPopUp(true)
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     });
 
     socket.on("callEnded", (data) => {
@@ -163,13 +165,11 @@ const Dashboard = () => {
   };
 
   const handelacceptCall = async () => {
-
     // ✅ Stop and completely reset ringtone
     if (!ringtone.paused) {
       ringtone.pause();
       ringtone.currentTime = 0; // Ensure it's reset
     }
-
     try {
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -185,6 +185,7 @@ const Dashboard = () => {
       currentStream.getAudioTracks().forEach(track => (track.enabled = true));
       setCallAccepted(true);
       setReciveCall(true);
+      setRejectCallPopUp(false);
       setIsSidebarOpen(false);
 
       const peer = new Peer({ initiator: false, trickle: false, stream: currentStream });
@@ -198,6 +199,8 @@ const Dashboard = () => {
       });
 
       peer.on("stream", (remoteStream) => {
+        ringtone.pause();
+        ringtone.currentTime = 0;
         if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
         // ✅ Ensure audio is played properly
         reciverVideo.current.muted = false;
@@ -218,12 +221,9 @@ const Dashboard = () => {
       ringtone.pause();
       ringtone.currentTime = 0; // Ensure it's reset
     }
-
     setReciveCall(false);
     setCallAccepted(false);
-
     socket.emit("reject-call", { to: caller.from, name: user.username, profilepic: user.profilepic });
-
     setTimeout(() => {
       window.location.reload();
     }, 1000);
