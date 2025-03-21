@@ -101,10 +101,16 @@ const Dashboard = () => {
 
   const startCall = async () => {
     try {
-      const currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const currentStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
+
       setStream(currentStream);
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
+        myVideo.current.muted = true; // ✅ Mute local audio
+        myVideo.current.volume = 0;   // ✅ Prevent echo
       }
 
       // ✅ Ensure audio is not muted
@@ -127,7 +133,8 @@ const Dashboard = () => {
       });
 
       peer.on("stream", (remoteStream) => {
-        if (reciverVideo.current) reciverVideo.current.srcObject = remoteStream;
+        if (reciverVideo.current)
+          reciverVideo.current.srcObject = remoteStream;
         // ✅ Ensure audio is played properly
         reciverVideo.current.muted = false;
         reciverVideo.current.volume = 1.0;
@@ -148,12 +155,17 @@ const Dashboard = () => {
 
   const handelacceptCall = async () => {
     try {
-      const currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const currentStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: { echoCancellation: true, noiseSuppression: true }
+      });
       setStream(currentStream);
       if (myVideo.current) {
         myVideo.current.srcObject = currentStream;
+        myVideo.current.muted = true; // ✅ Mute local audio
+        myVideo.current.volume = 0;   // ✅ Prevent echo
       }
-          // ✅ Ensure audio is enabled
+      // ✅ Ensure audio is enabled
       currentStream.getAudioTracks().forEach(track => (track.enabled = true));
       setCallAccepted(true);
       setReciveCall(true);
