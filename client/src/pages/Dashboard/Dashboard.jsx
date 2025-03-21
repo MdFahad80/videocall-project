@@ -159,10 +159,10 @@ const Dashboard = () => {
   };
 
   const handelacceptCall = async () => {
+    ringtone.pause(); // Stop the ringtone
+    ringtone.currentTime = 0; // Reset audio
 
     try {
-      ringtone.pause(); // Stop the ringtone
-      ringtone.currentTime = 0; // Reset audio
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: { echoCancellation: true, noiseSuppression: true }
@@ -205,19 +205,25 @@ const Dashboard = () => {
   };
 
   const handelrejectCall = () => {
+
     ringtone.pause();
     ringtone.currentTime = 0;
+
     setReciveCall(false);
     setCallAccepted(false);
+
     socket.emit("reject-call", { to: caller.from, name: user.username });
+
     setTimeout(() => {
       window.location.reload();
     }, 1000);
   };
 
   const handelendCall = () => {
+
     ringtone.pause();
     ringtone.currentTime = 0;
+
     socket.emit("call-ended", { to: caller?.from || selectedUser, name: user.username });
     endCallCleanup();
     setTimeout(() => {
@@ -243,7 +249,7 @@ const Dashboard = () => {
     endCallCleanup();
     window.location.reload();
   });
-  
+
   const isOnlineUser = (userId) => userOnline.some((u) => u.userId === userId);
 
   const allusers = async () => {
