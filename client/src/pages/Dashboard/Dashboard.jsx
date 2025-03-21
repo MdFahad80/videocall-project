@@ -60,7 +60,7 @@ const Dashboard = () => {
       setCallerSignal(data.signal);
       const ringtone = new Audio("/ringtone.mp3"); // Use the correct path or a URL
       ringtone.loop = true; // Loop the sound until action is taken
-      ringtone.play(); // Start playing ringtone
+      ringtone.play(); // Start playing 
     });
 
     socket.on("callRejected", (data) => {
