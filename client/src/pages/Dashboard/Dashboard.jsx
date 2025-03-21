@@ -163,11 +163,9 @@ const Dashboard = () => {
   };
 
   const handelacceptCall = async () => {
-    // ✅ Stop and completely reset ringtone
-    if (!ringtone.paused) {
-      ringtone.pause();
-      ringtone.currentTime = 0; // Ensure it's reset
-    }
+       // ✅ Stop and completely reset ringtone
+        ringtone.pause();
+        ringtone.currentTime = 0; // Ensure it's reset
     try {
       const currentStream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -212,10 +210,8 @@ const Dashboard = () => {
 
   const handelrejectCall = () => {
     // ✅ Stop and completely reset ringtone
-    if (!ringtone.paused) {
       ringtone.pause();
       ringtone.currentTime = 0; // Ensure it's reset
-    }
 
     setReciveCall(false);
     setCallAccepted(false);
