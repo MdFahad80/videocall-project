@@ -34,9 +34,11 @@ const Dashboard = () => {
   const [callerName, setCallerName] = useState("");
   const [callerSignal, setCallerSignal] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);
+  const [callerWating, setCallerWating] = useState(false)
 
   const [callRejectedPopUp, setCallRejectedPopUp] = useState(false);
   const [rejectorData, setCallrejectorData] = useState(null);
+
 
   // 🔹 State to track microphone & video status
   const [isMicOn, setIsMicOn] = useState(true);
@@ -108,14 +110,7 @@ const Dashboard = () => {
       socket.off("online-users");  // Remove listener for online users list.
     };
   }, [user, socket]); // Dependencies: This effect runs whenever `user` or `socket` changes.
-  // ✅ Utility function to stop ringtone completely
-  /* const stopRingtone = () => {
-     if (ringtone) {
-       ringtone.pause();
-       ringtone.currentTime = 0;
-       ringtone.src = "";  // ✅ This ensures it fully stops and resets
-     }
-   };*/
+
 
   const startCall = async () => {
     try {
@@ -140,6 +135,7 @@ const Dashboard = () => {
       // ✅ Close the sidebar (if open) and set the selected user for the call
       setCallRejectedPopUp(false);
       setIsSidebarOpen(false);
+      setCallerWating(true);//wating to join reciver
       setSelectedUser(modalUser._id);
       // ✅ Create a new Peer connection (WebRTC) as the call initiator
       const peer = new Peer({
@@ -171,6 +167,7 @@ const Dashboard = () => {
       socket.once("callAccepted", (data) => {
         setCallRejectedPopUp(false);
         setCallAccepted(true); // ✅ Mark call as accepted
+        setCallerWating(false);//reciver join the call
         setCaller(data.from); // ✅ Store caller's ID
         peer.signal(data.signal); // ✅ Pass the received WebRTC signal to establish the connection
       });
@@ -210,6 +207,7 @@ const Dashboard = () => {
       // ✅ Update call state
       setCallAccepted(true); // ✅ Mark call as accepted
       setReciveCall(true); // ✅ Indicate that the user has received the call
+      setCallerWating(false);//reciver join the call
       setIsSidebarOpen(false); // ✅ Close the sidebar (if open)
 
       // ✅ Create a new Peer connection as the receiver (not the initiator)
@@ -252,6 +250,7 @@ const Dashboard = () => {
     // ✅ Stop ringtone when call is accepted
     ringtone.stop();
     // ✅ Update the state to indicate that the call is rejected
+    setCallerWating(false);//reciver reject the call
     setReciveCall(false); // ✅ The user is no longer receiving a call
     setCallAccepted(false); // ✅ Ensure the call is not accepted
 
@@ -299,6 +298,7 @@ const Dashboard = () => {
     // ✅ Reset all relevant states to indicate call has ended
     // ✅ Stop ringtone when call is accepted
     ringtone.stop();
+    setCallerWating(false);
     setStream(null); // ✅ Remove video/audio stream
     setReciveCall(false); // ✅ Indicate no ongoing call
     setCallAccepted(false); // ✅ Ensure call is not mistakenly marked as ongoing
@@ -385,6 +385,7 @@ const Dashboard = () => {
     }
   };
 
+  console.log(callerWating);
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -466,15 +467,27 @@ const Dashboard = () => {
       {selectedUser || reciveCall || callAccepted ? (
         <div className="relative w-full h-screen bg-black flex items-center justify-center">
           {/* Remote Video */}
+          {callerWating ? <div>
+              <div className="flex flex-col items-center">
+                <p className='font-black text-xl mb-2'>User Details</p>
+                <img
+                  src={modalUser.profilepic || "/default-avatar.png"}
+                  alt="User"
+                  className="w-20 h-20 rounded-full border-4 border-blue-500 animate-bounce"
+                />
+                <h3 className="text-lg font-bold mt-3 text-white">{modalUser.username}</h3>
+                <p className="text-sm text-gray-300">{modalUser.email}</p>
+              </div>
+            </div> : 
           <video
             ref={reciverVideo}
             autoPlay
             className="absolute top-0 left-0 w-full h-full object-contain rounded-lg"
           />
-
+          }
           {/* Local PIP Video */}
           <div className="absolute bottom-[75px] md:bottom-0 right-1 bg-gray-900 rounded-lg overflow-hidden shadow-lg">
-            <video
+         <video
               ref={myVideo}
               autoPlay
               playsInline
