@@ -3,10 +3,12 @@ import { FaUser, FaEnvelope, FaLock } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
 import apiClient from '../../apiClient';
 import { Link, useNavigate } from 'react-router-dom';
+import { useUser } from '../../context/UserContextApi';
 
 
 
 const AuthForm = ({ type }) => {
+      const {updateUser } = useUser();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         fullname: '',
@@ -37,12 +39,13 @@ const AuthForm = ({ type }) => {
                 navigate('/login')
             }
             if (type === 'login') {
-                localStorage.setItem('userData', JSON.stringify(response.data));
-                navigate('/')
+                updateUser(response.data)
+                //localStorage.setItem('userData', JSON.stringify(response.data));
                 // Save token in cookies
                 const date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
                 const expires = "expires=" + date.toUTCString();
                 document.cookie = `jwt=${response.data.token}; path=/; ${expires}`;
+                navigate('/')
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Something went wrong!');
