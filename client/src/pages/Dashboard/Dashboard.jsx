@@ -1,6 +1,6 @@
 import React, { use, useEffect, useRef, useState } from 'react';
 import socketInstance from '../components/socketio/VideoCallSocket';
-import { FaBars, FaTimes, FaPhoneAlt, FaMicrophone, FaVideo } from "react-icons/fa";
+import { FaBars, FaTimes, FaPhoneAlt, FaMicrophone, FaVideo, FaVideoSlash, FaMicrophoneSlash } from "react-icons/fa";
 import Lottie from "lottie-react";
 import { Howl } from "howler";
 import wavingAnimation from "../../assets/waving.json";
@@ -35,8 +35,12 @@ const Dashboard = () => {
   const [callerSignal, setCallerSignal] = useState(null);
   const [callAccepted, setCallAccepted] = useState(false);
 
-  const [callRejectedPopUp , setCallRejectedPopUp]=useState(false);
-  const [rejectorData , setCallrejectorData]=useState(null);
+  const [callRejectedPopUp, setCallRejectedPopUp] = useState(false);
+  const [rejectorData, setCallrejectorData] = useState(null);
+
+  // 🔹 State to track microphone & video status
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isCamOn, setIsCamOn] = useState(true);
 
   // 🔥 Load ringtone
   const ringtone = new Howl({
@@ -105,13 +109,13 @@ const Dashboard = () => {
     };
   }, [user, socket]); // Dependencies: This effect runs whenever `user` or `socket` changes.
   // ✅ Utility function to stop ringtone completely
- /* const stopRingtone = () => {
-    if (ringtone) {
-      ringtone.pause();
-      ringtone.currentTime = 0;
-      ringtone.src = "";  // ✅ This ensures it fully stops and resets
-    }
-  };*/
+  /* const stopRingtone = () => {
+     if (ringtone) {
+       ringtone.pause();
+       ringtone.currentTime = 0;
+       ringtone.src = "";  // ✅ This ensures it fully stops and resets
+     }
+   };*/
 
   const startCall = async () => {
     try {
@@ -304,6 +308,30 @@ const Dashboard = () => {
     }, 100);
   };
 
+
+  // 🎤 Toggle Microphone
+  const toggleMic = () => {
+    if (stream) {
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !isMicOn;
+        setIsMicOn(audioTrack.enabled);
+      }
+    }
+  };
+
+  const toggleCam = () => {
+    if (stream) {
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !isCamOn;
+        setIsCamOn(videoTrack.enabled);
+      }
+    }
+  };
+
+
+
   const allusers = async () => {
     try {
       setLoading(true);
@@ -475,20 +503,27 @@ const Dashboard = () => {
             >
               <FaPhoneSlash size={24} />
             </button>
+            {/* 🎤 Toggle Mic */}
             <button
               type="button"
-              //onClick={toggleMute}
-              className="bg-gray-700 p-4 rounded-full text-white shadow-lg cursor-pointer"
+              onClick={toggleMic}
+              className={`p-4 rounded-full text-white shadow-lg cursor-pointer transition-colors ${isMicOn ? "bg-green-600" : "bg-red-600"
+                }`}
             >
-              <FaMicrophone size={24} />
+              {isMicOn ? <FaMicrophone size={24} /> : <FaMicrophoneSlash size={24} />}
             </button>
+
+            {/* 📹 Toggle Video */}
             <button
               type="button"
-              //onClick={toggleCamera}
-              className="bg-gray-700 p-4 rounded-full text-white shadow-lg cursor-pointer"
+              onClick={toggleCam}
+              className={`p-4 rounded-full text-white shadow-lg cursor-pointer transition-colors ${isCamOn ? "bg-green-600" : "bg-red-600"
+                }`}
             >
-              <FaVideo size={24} />
+              {isCamOn ? <FaVideo size={24} /> : <FaVideoSlash size={24} />}
             </button>
+
+
           </div>
         </div>
       ) : (
@@ -565,8 +600,8 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-  {/* Call rejection PopUp */}
-  {callRejectedPopUp && (
+      {/* Call rejection PopUp */}
+      {callRejectedPopUp && (
         <div className="fixed inset-0 bg-transparent bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
             <div className="flex flex-col items-center">
