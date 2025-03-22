@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import Peer from 'simple-peer'
 
 const Dashboard = () => {
-  const { user, updateUser } = useUser();
+  const { user, setUser } = useUser();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -349,7 +349,7 @@ const Dashboard = () => {
       socket.off("disconnect");
       socket.disconnect();
       socketInstance.setSocket();
-      updateUser(null);
+      setUser(null);
       localStorage.removeItem("userData");
       navigate('/login');
     } catch (error) {
