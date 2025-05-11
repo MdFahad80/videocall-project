@@ -5,6 +5,7 @@ import cors from "cors"; // CORS (Cross-Origin Resource Sharing) allows frontend
 import cookieParser from "cookie-parser"; // Parses cookies from incoming requests
 import { createServer } from "http"; // Creates an HTTP server (needed for WebSocket support)
 import { Server } from "socket.io"; // Import `Server` from `socket.io` for real-time communication
+const normalizeOrigin = (url) => url?.replace(/\/$/, '');
 
 // Import custom route files
 import authRoute from "./rout/authRout.js"; // Import authentication routes (login/signup)
@@ -24,21 +25,26 @@ const PORT = process.env.PORT || 3000;
 const server = createServer(app);
 
 // 🌍 Allowed frontend origins for CORS (Cross-Origin Resource Sharing)
-const allowedOrigins = [process.env.FRONTEND_URL]; 
-console.log(allowedOrigins); // Debugging: Check if the frontend URL is loaded properly
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://192.168.50.145:5173',
+  'http://172.27.192.1:5173',
+  'https://your-frontend.vercel.app'
+];
 
-// 🔧 Middleware to handle CORS
 app.use(cors({
-  origin: function (origin, callback) { 
-    if (!origin || allowedOrigins.includes(origin)) { 
-      callback(null, true); // ✅ Allow the request if it's from an allowed origin
+  origin: function (origin, callback) {
+    console.log("Request Origin:", origin);
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS')); // ❌ Block requests from unknown origins
+      callback(new Error('Not allowed by CORS: ' + origin));
     }
   },
-  credentials: true, // ✅ Allow sending cookies with requests
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // ✅ Allow these HTTP methods
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
 }));
+
 
 // 🛠 Middleware for handling JSON requests and cookies
 app.use(express.json()); // Enables parsing of JSON request bodies
@@ -191,7 +197,7 @@ io.on("connection", (socket) => {
 (async () => {
   try {
     await dbConnection(); // Connect to MongoDB
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ Server is running on port ${PORT}`);
     });
   } catch (error) {

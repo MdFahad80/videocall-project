@@ -180,71 +180,88 @@ const Dashboard = () => {
     }
   };
 
-  const handelacceptCall = async () => {
-    // ✅ Stop ringtone when call is accepted
-    ringtone.stop();
+  const getSafeUserMedia = async () => {
     try {
-      // ✅ Request access to the user's media devices (camera & microphone)
-      const currentStream = await navigator.mediaDevices.getUserMedia({
-        video: true, // Enable video
-        audio: {
-          echoCancellation: true, // ✅ Reduce echo in audio
-          noiseSuppression: true  // ✅ Reduce background noise
-        }
-      });
-
-      // ✅ Store the stream in state so it can be used later
-      setStream(currentStream);
-
-      // ✅ Assign the stream to the local video element for preview
-      if (myVideo.current) {
-        myVideo.current.srcObject = currentStream;
+      // 🔁 Stop existing stream if stored globally (optional)
+      if (window.activeStream) {
+        window.activeStream.getTracks().forEach(track => track.stop());
+        window.activeStream = null;
       }
 
-      // ✅ Ensure that the audio track is enabled
-      currentStream.getAudioTracks().forEach(track => (track.enabled = true));
-
-      // ✅ Update call state
-      setCallAccepted(true); // ✅ Mark call as accepted
-      setReciveCall(true); // ✅ Indicate that the user has received the call
-      setCallerWating(false);//reciver join the call
-      setIsSidebarOpen(false); // ✅ Close the sidebar (if open)
-
-      // ✅ Create a new Peer connection as the receiver (not the initiator)
-      const peer = new Peer({
-        initiator: false, // ✅ This user is NOT the call initiator
-        trickle: false, // ✅ Prevents trickling of ICE candidates, ensuring a single signal exchange
-        stream: currentStream // ✅ Attach the local media stream
-      });
-
-      // ✅ Handle the "signal" event (this occurs when the WebRTC handshake is completed)
-      peer.on("signal", (data) => {
-        // ✅ Emit an "answeredCall" event to the server with necessary response details
-        socket.emit("answeredCall", {
-          signal: data, // ✅ WebRTC signal data required for establishing connection
-          from: me, // ✅ ID of the receiver (this user)
-          to: caller.from, // ✅ ID of the caller
-        });
-      });
-
-      // ✅ Handle the "stream" event (this is triggered when the remote user's media stream is received)
-      peer.on("stream", (remoteStream) => {
-        if (reciverVideo.current) {
-          reciverVideo.current.srcObject = remoteStream; // ✅ Assign remote stream to video element
-          reciverVideo.current.muted = false; // ✅ Ensure audio from the remote user is not muted
-          reciverVideo.current.volume = 1.0; // ✅ Set volume to normal level
+      // 🎥 Get user media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true
         }
       });
 
-      // ✅ If there's an incoming signal (from the caller), process it
-      if (callerSignal) peer.signal(callerSignal);
+      window.activeStream = stream; // Optional for reusability
+      return stream.clone(); // ✅ Cloning helps avoid device-in-use errors across tabs
 
-      // ✅ Store the peer connection reference to manage later (like ending the call)
-      connectionRef.current = peer;
     } catch (error) {
-      console.error("Error accessing media devices:", error); // ✅ Handle permission errors or device access failures
+      console.error("❌ Media device access error:", error);
+      if (error.name === "NotReadableError") {
+        alert("❗ Camera or microphone is already in use by another app or tab.");
+      } else if (error.name === "NotAllowedError") {
+        alert("❗ Permission to access camera/microphone was denied.");
+      } else {
+        alert("❗ Failed to access media devices. Please check your browser or system settings.");
+      }
+      return null;
     }
   };
+
+
+  const handelacceptCall = async () => {
+    ringtone.stop();
+
+    const currentStream = await getSafeUserMedia();
+    if (!currentStream) return;
+
+    setStream(currentStream);
+
+    if (myVideo.current) {
+      myVideo.current.srcObject = currentStream;
+      myVideo.current.muted = true;
+      myVideo.current.volume = 0;
+    }
+
+    currentStream.getAudioTracks().forEach(track => (track.enabled = true));
+
+    setCallAccepted(true);
+    setReciveCall(true);
+    setCallerWating(false);
+    setIsSidebarOpen(false);
+
+    const peer = new Peer({
+      initiator: false,
+      trickle: false,
+      stream: currentStream
+    });
+
+    peer.on("signal", (data) => {
+      socket.emit("answeredCall", {
+        signal: data,
+        from: me,
+        to: caller.from,
+      });
+    });
+
+    peer.on("stream", (remoteStream) => {
+      if (reciverVideo.current) {
+        reciverVideo.current.srcObject = remoteStream;
+        reciverVideo.current.muted = false;
+        reciverVideo.current.volume = 1.0;
+      }
+    });
+
+    if (callerSignal) peer.signal(callerSignal);
+
+    connectionRef.current = peer;
+  };
+
 
   const handelrejectCall = () => {
     // ✅ Stop ringtone when call is accepted
@@ -468,26 +485,26 @@ const Dashboard = () => {
         <div className="relative w-full h-screen bg-black flex items-center justify-center">
           {/* Remote Video */}
           {callerWating ? <div>
-              <div className="flex flex-col items-center">
-                <p className='font-black text-xl mb-2'>User Details</p>
-                <img
-                  src={modalUser.profilepic || "/default-avatar.png"}
-                  alt="User"
-                  className="w-20 h-20 rounded-full border-4 border-blue-500 animate-bounce"
-                />
-                <h3 className="text-lg font-bold mt-3 text-white">{modalUser.username}</h3>
-                <p className="text-sm text-gray-300">{modalUser.email}</p>
-              </div>
-            </div> : 
-          <video
-            ref={reciverVideo}
-            autoPlay
-            className="absolute top-0 left-0 w-full h-full object-contain rounded-lg"
-          />
+            <div className="flex flex-col items-center">
+              <p className='font-black text-xl mb-2'>User Details</p>
+              <img
+                src={modalUser.profilepic || "/default-avatar.png"}
+                alt="User"
+                className="w-20 h-20 rounded-full border-4 border-blue-500 animate-bounce"
+              />
+              <h3 className="text-lg font-bold mt-3 text-white">{modalUser.username}</h3>
+              <p className="text-sm text-gray-300">{modalUser.email}</p>
+            </div>
+          </div> :
+            <video
+              ref={reciverVideo}
+              autoPlay
+              className="absolute top-0 left-0 w-full h-full object-contain rounded-lg"
+            />
           }
           {/* Local PIP Video */}
           <div className="absolute bottom-[75px] md:bottom-0 right-1 bg-gray-900 rounded-lg overflow-hidden shadow-lg">
-         <video
+            <video
               ref={myVideo}
               autoPlay
               playsInline

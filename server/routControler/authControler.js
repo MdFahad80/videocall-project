@@ -21,6 +21,7 @@ export const SignUp = async (req, res) => {
             gender,
             profilepic: gender === "male" ? boyProfilePic : girlProfilePic
         })
+        
         if (newUser) {
             await newUser.save();
             jwtToken(newUser._id, res)
